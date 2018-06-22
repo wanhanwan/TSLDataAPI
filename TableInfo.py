@@ -1,5 +1,5 @@
 # coding: utf-8
-from utils import read_tableinfo
+from .utils import read_tableinfo
 
 
 table_info = read_tableinfo()

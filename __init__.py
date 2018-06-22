@@ -1,1 +1,1 @@
-from Dividend import EqyDivGet
+from .Dividend import EqyDivGet

@@ -1,6 +1,6 @@
 # coding: utf-8
 """分红送股"""
-from BaseAPI import StatementGet
+from .BaseAPI import StatementGet
 
 
 def EqyDivGet(ticker=None, secID=None, beginReportDate=None, endReportDate=None, baseDate=None,

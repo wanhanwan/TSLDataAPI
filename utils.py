@@ -9,7 +9,7 @@ def read_tableinfo():
     return tableInfo
 
 
-def get_period_range(start, end):
+def get_period_range(start, end, freq='1Q'):
     return pd.date_range(start, end, freq='1Q').strftime("%Y%m%d").tolist()
 
 

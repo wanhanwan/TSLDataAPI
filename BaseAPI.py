@@ -4,8 +4,8 @@ from FactorLib.data_source.tsl_data_source import CsQuery
 from datetime import datetime
 import pandas as pd
 
-from TableInfo import tsl_dict
-from utils import get_period_range
+from .TableInfo import tsl_dict
+from .utils import get_period_range
 
 
 def StatementGet(table_id, reportDateField, secID=None, ticker=None, beginReportDate=None, endReportDate=None,
@@ -47,7 +47,7 @@ def StatementGet(table_id, reportDateField, secID=None, ticker=None, beginReport
         else:
             stocks = ticker
     else:
-        raise ValueError("one of secID and ticker must not be None!")
+        stocks = None
 
     if field == '*':
         factor_ids = tsl_dict.get_table_columns(table_id)
@@ -67,7 +67,10 @@ def StatementGet(table_id, reportDateField, secID=None, ticker=None, beginReport
     rslt = []
     for d in all_dates:
         field_dict = {"'%s'"%name: 'report(%d, %s)'%(func, d) for name, func in zip(eng_names, factor_ids)}
-        data = CsQuery(field_dict, baseDate, "''", stocks)
+        if stocks is not None:
+            data = CsQuery(field_dict, baseDate, "''", stocks)
+        else:
+            data = CsQuery(field_dict, baseDate)
         data[reportDate_eng_name] = data[reportDate_eng_name].replace(0, int(d))
         rslt.append(data)
     return pd.concat(rslt)

@@ -1,0 +1,14 @@
+__pycache__/
+.DS_Store
+*.xml
+*.pyc
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Session Data files
+.RData
+.idea/Packages.iml
+
+# test file in root dir
+/test.py
