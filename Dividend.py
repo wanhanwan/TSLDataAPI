@@ -1,5 +1,6 @@
 # coding: utf-8
 """分红送股"""
+import pandas as pd
 from .BaseAPI import StatementGet
 
 
@@ -14,6 +15,9 @@ def EqyDivGet(ticker=None, secID=None, beginReportDate=None, endReportDate=None,
         data = data[data['s_div_prelanndate'] >= int(beginPublishDate)]
     if endPublishDate is not None:
         data = data[data['s_div_prelanndate'] <= int(endPublishDate)]
+    data.index = data.index.set_levels([pd.PeriodIndex(data.index.levels[0],
+                                                       freq='D').to_timestamp()],
+                                       level=['date'])
     return data
 
 

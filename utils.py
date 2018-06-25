@@ -5,7 +5,13 @@ import pandas as pd
 
 def read_tableinfo():
     file_pth = Path(__file__).parents[0] / 'resource' / 'tsl_tableinfo.xlsx'
-    tableInfo = pd.read_excel(file_pth, header=0, index_col=0)
+    tableInfo = pd.read_excel(file_pth, sheet_name='FactorID', header=0, index_col=0)
+    return tableInfo
+
+
+def read_indexnameid():
+    file_pth = Path(__file__).parents[0] / 'resource' / 'tsl_tableinfo.xlsx'
+    tableInfo = pd.read_excel(file_pth, sheet_name='IndexNameID', header=0)
     return tableInfo
 
 

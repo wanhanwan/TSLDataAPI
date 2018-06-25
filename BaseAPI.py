@@ -1,5 +1,5 @@
 # coding: utf-8
-from FactorLib.utils.tool_funcs import windcode_to_tradecode
+from FactorLib.utils.tool_funcs import windcode_to_tradecode, windcode_to_tslcode, tradecode_to_tslcode
 from FactorLib.data_source.tsl_data_source import (CsQuery, PanelQuery, PanelQueryByStocks,
                                                    CsQueryMultiFields)
 from FactorLib.data_source.base_data_source_h5 import tc
@@ -10,17 +10,17 @@ from .TableInfo import tsl_dict
 from .utils import get_period_range, get_all_cycles, cycle_value_of, to_pandas_freq
 
 
-def _get_stocks(secID, ticker):
+def _get_secIDs(secID, ticker):
     if secID is not None:
         if isinstance(secID, str):
-            stocks = [windcode_to_tradecode(secID)]
+            stocks = [windcode_to_tslcode(secID)]
         else:
-            stocks = [windcode_to_tradecode(x) for x in secID]
+            stocks = [windcode_to_tslcode(x) for x in secID]
     elif ticker is not None:
         if isinstance(ticker, str):
-            stocks = [ticker]
+            stocks = [tradecode_to_tslcode(ticker)]
         else:
-            stocks = ticker
+            stocks = [tradecode_to_tslcode(x) for x in ticker]
     else:
         stocks = None
     return stocks
@@ -54,7 +54,7 @@ def StatementGet(table_id, reportDateField, secID=None, ticker=None, beginReport
         filed: list
             返回字段, '*'代表返回所有字段
     """
-    stocks = _get_stocks(secID, ticker)
+    stocks = _get_secIDs(secID, ticker)
 
     if field == '*':
         factor_ids = tsl_dict.get_table_columns(table_id)
@@ -75,7 +75,7 @@ def StatementGet(table_id, reportDateField, secID=None, ticker=None, beginReport
     for d in all_dates:
         field_dict = {"'%s'"%name: 'report(%d, %s)'%(func, d) for name, func in zip(eng_names, factor_ids)}
         if stocks is not None:
-            data = CsQuery(field_dict, baseDate, "''", stocks)
+            data = CsQuery(field_dict, baseDate, "''", stocks, code_transfer=False)
         else:
             data = CsQuery(field_dict, baseDate)
         data[reportDate_eng_name] = data[reportDate_eng_name].replace(0, int(d))
@@ -84,7 +84,7 @@ def StatementGet(table_id, reportDateField, secID=None, ticker=None, beginReport
 
 
 def QuotaGet(table_id, secID=None, ticker=None, beginTradeDate=None, endTradeDate=None, tradeDate=None,
-             field='*', cycle='cy_day', rate=0):
+             field='*', cycle='cy_day', rate=0, sysparams=None, **kwargs):
     """
     历史行情数据提取，例如高开低收量额等字段。支持时间序列和横截面提取。
 
@@ -110,11 +110,21 @@ def QuotaGet(table_id, secID=None, ticker=None, beginTradeDate=None, endTradeDat
         rate: int
             是否复权
     """
+    def _get_params(func_params):
+        r = []
+        for f_id, p in func_params.items():
+            if p == '':
+                r.append(p)
+            else:
+                pv = [str(kwargs.get(x, 0)) for x in p]
+                r.append(','.join(pv))
+        return r
+
     all_cycles = get_all_cycles()
     assert cycle in all_cycles
     cycle_value = cycle_value_of(cycle)
 
-    stocks = _get_stocks(secID, ticker)
+    stocks = _get_secIDs(secID, ticker)
 
     if cycle.split('_')[1][-1] in ['s', 'm']:
         pandas_freq = cycle.split('_')[1][:-1] + to_pandas_freq(cycle.split('_')[1][-1])
@@ -131,19 +141,23 @@ def QuotaGet(table_id, secID=None, ticker=None, beginTradeDate=None, endTradeDat
     else:
         factor_ids = tsl_dict.get_factor_id_by_names(table_id, field)
     funcs = tsl_dict.get_note_by_id(factor_ids)
+    func_params = _get_params(tsl_dict.get_params_by_id(factor_ids))
     factor_names = tsl_dict.get_factor_eng_names_by_id(factor_ids)
 
-    sysparams = {'bRate': rate, 'Cycle': cycle_value}
-
+    sysparams2 = {'bRate': rate, 'Cycle': cycle_value}
+    if sysparams is not None:
+        sysparams2.update(sysparams)
     # 从效率角度考虑，如果股票数量超过日期数量，按股票进行循环；反之，按日期循环。
-    field_str = {"'%s'"%name: '%s()'%func for name, func in zip(factor_names, funcs)}
+    field_str = {"'%s'"%name: '%s(%s)'%(func, param) for name, func, param in
+                 zip(factor_names, funcs, func_params)}
     if (stocks is None) or (len(stocks) > len(dates)):
         if stocks is None:
-            rslt = PanelQuery(field_str, dates=dates, **sysparams)
+            rslt = PanelQuery(field_str, dates=dates, **sysparams2)
         else:
-            rslt = PanelQuery(field_str, dates=dates, bk_name="''", stock_list=stocks, **sysparams)
+            rslt = PanelQuery(field_str, dates=dates, bk_name="''", stock_list=stocks,
+                              code_transfer=False, **sysparams2)
     else:
-        rslt = PanelQueryByStocks(field_str, stocks, dates=dates, **sysparams)
+        rslt = PanelQueryByStocks(field_str, stocks, dates=dates, code_transfer=False,**sysparams2)
     return rslt
 
 
@@ -152,7 +166,7 @@ def InfoArrayGet(table_id, func_name, secID=None, ticker=None, beginReportDate=N
     """
     数据表信息提取。适用于单季度多条数据，对应天软infoarray()函数
     """
-    stocks = _get_stocks(secID, ticker)
+    stocks = _get_secIDs(secID, ticker)
     if field == '*':
         factor_ids = tsl_dict.get_table_columns(table_id)
     else:
@@ -172,14 +186,15 @@ def InfoArrayGet(table_id, func_name, secID=None, ticker=None, beginReportDate=N
         if stocks is None:
             data = CsQueryMultiFields(field_dict, baseDate)
         else:
-            data = CsQueryMultiFields(field_dict, baseDate, "''", stocks)
+            data = CsQueryMultiFields(field_dict, baseDate, "''", stocks, code_transfer=False)
         rslt[i] = data
     rslt = pd.concat(rslt)
     return rslt[factor_names].rename(columns=mapping)
 
 
 def BaseGet(table_id, secID=None, ticker=None, field='*', baseDate=None, bk=None):
-    stocks = _get_stocks(secID, ticker)
+    """对应天软base()函数"""
+    stocks = _get_secIDs(secID, ticker)
     if field == '*':
         factor_ids = tsl_dict.get_table_columns(table_id)
     else:
@@ -188,7 +203,7 @@ def BaseGet(table_id, secID=None, ticker=None, field='*', baseDate=None, bk=None
     baseDate = datetime.strptime(baseDate, "%Y%m%d") if baseDate is not None else datetime.today()
     field_dict = {"'%s'"%name: 'base(%d)' % factor for name, factor in zip(factor_eng_names, factor_ids)}
     if stocks is not None:
-        return CsQuery(field_dict, baseDate, "''", stocks)
+        return CsQuery(field_dict, baseDate, "''", stocks, code_transfer=False)
     elif bk is not None:
         return CsQuery(field_dict, baseDate, bk, stocks)
     else:
