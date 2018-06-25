@@ -18,7 +18,7 @@ def AShareEodDailyPricesGet(secID=None, ticker=None, beginTradeDate=None, endTra
 
 
 def AShareMinutelyPricesGet(secID=None, ticker=None, beginTradeDate=None, endTradeDate=None,
-                          tradeDate=None, field='*', brate=0, minutes=1):
+                            tradeDate=None, field='*', brate=0, minutes=1):
     """
     股票分钟行情数据 \n
     对应字段包括：开高低收 成交量成交额 涨跌幅 前收盘价
@@ -79,3 +79,12 @@ def AShareMonthlyPricesGet(secID=None, ticker=None, beginTradeDate=None, endTrad
     cycle = 'cy_month'
     return QuotaGet(0, secID, ticker, beginTradeDate, endTradeDate, tradeDate, field, cycle=cycle,
                     rate=brate)
+
+
+def AshareEodDerivativeGet(secID=None, ticker=None, beginTradeDate=None, endTradeDate=None,
+                           tradeDate=None, field='*', **kwargs):
+    """股票估值衍生指标。包括：市盈率、市净率等
+    """
+    table_id = 0
+    return QuotaGet(table_id, secID, ticker, beginTradeDate, endTradeDate, tradeDate,
+                    field, **kwargs)

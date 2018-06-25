@@ -6,3 +6,7 @@ from .Index import (IndexConstituentGet,
                     IndexFinancialDerivativeGet,
                     IndexEodPricesGet,
                     IndexValuationGet)
+from .EqyFinance import (AShareBalanceSheetGet,
+                         AshareIncomeSheetGet,
+                         AshareSQIncomeSheetGet,
+                         AshareTTMIncomeSheetGet)

@@ -27,7 +27,7 @@ def _get_secIDs(secID, ticker):
 
 
 def StatementGet(table_id, reportDateField, secID=None, ticker=None, beginReportDate=None, endReportDate=None,
-                 baseDate=None, reportDate=None, field='*'):
+                 baseDate=None, reportDate=None, field='*', func_name='report'):
     """
     报表因子的提取
     输入天软某张表的ID，返回这张表的字段。适用于财务报表等按季度更新的数据, 并以天软中report函数为基础。
@@ -73,7 +73,12 @@ def StatementGet(table_id, reportDateField, secID=None, ticker=None, beginReport
 
     rslt = []
     for d in all_dates:
-        field_dict = {"'%s'"%name: 'report(%d, %s)'%(func, d) for name, func in zip(eng_names, factor_ids)}
+        if func_name == 'report':
+            field_dict = {"'%s'"%name: '%s(%d, %s)'%(func_name, func, d)
+                          for name, func in zip(eng_names, factor_ids)}
+        else:
+            field_dict = {"'%s'" % name: '%s(%s, %d)' % (func_name, d, func)
+                          for name, func in zip(eng_names, factor_ids)}
         if stocks is not None:
             data = CsQuery(field_dict, baseDate, "''", stocks, code_transfer=False)
         else:

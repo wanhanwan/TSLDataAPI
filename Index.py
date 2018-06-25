@@ -53,7 +53,7 @@ def IndexFinancialDerivativeGet(bk_name, field='*', startReportDate=None,
 
     Parameters:
     --------------------------------------------
-    bk_names: str
+    bk_name: str
      板块名称，如：沪深300、中证500、中证800
     field: str or list of str
         字段名称
@@ -110,6 +110,23 @@ def IndexFinancialDerivativeGet(bk_name, field='*', startReportDate=None,
 def IndexValuationGet(bk_name, beginTradeDate=None, endTradeDate=None, tradeDate=None,
                       field='*', **kwargs):
     """板块的估值指标
+    
+    Parameters:
+    --------------------------------------------
+    bk_name: str
+     板块名称，如：沪深300、中证500、中证800
+    field: str or list of str
+        字段名称
+    weight_type: int
+        加权方式。0：总股本加权；1：流通股本加权；4：算术平均
+    stock_type: int
+        股票类型。0：全部；1：只考虑A股；2：只考虑B股
+    sample_type: int
+        样本股选择 0：所有个股参与计算；1：剔除每股收益<0的股票
+    cal_type: int
+       计算类型。 0：平均值；1：合计 一般用于财务基本指标，如净利润合计或净利润平均值
+    eps_criterion: float
+        绩差股标准。
     """
     table_id = 4
     sysparam = {'CurrentBkName': bk_name}
