@@ -1,6 +1,13 @@
 from .Dividend import EqyDivGet
-from .Quota import *
-from .Fund import *
+from .Quota import (AshareEodDerivativeGet,
+					AShareMinutelyPricesGet,
+					AShareSecondlyPricesGet,
+					AShareWeeklyPricesGet,
+					AShareEodDailyPricesGet,
+					AShareMonthlyPricesGet)
+from .Fund import (FundNavGet,
+				   FundBasicInfoGet,
+				   FundEqyInfoGet)
 from .Index import (IndexConstituentGet,
                     IndexWeightGet,
                     IndexFinancialDerivativeGet,
@@ -10,3 +17,4 @@ from .EqyFinance import (AShareBalanceSheetGet,
                          AshareIncomeSheetGet,
                          AshareSQIncomeSheetGet,
                          AshareTTMIncomeSheetGet)
+from .TableInfo import tsl_dict
