@@ -7,6 +7,7 @@ from .BaseAPI import get_period_range, tsl_dict, QuotaGet
 from datetime import datetime
 from FactorLib.data_source.tsl_data_source import encode_datetime, run_script
 import pandas as pd
+import numpy as np
 
 
 tsl_db = TSLDBOnline()
@@ -107,14 +108,18 @@ def IndexFinancialDerivativeGet(bk_name, field='*', startReportDate=None,
     return rslt
 
 
-def IndexValuationGet(bk_name, beginTradeDate=None, endTradeDate=None, tradeDate=None,
-                      field='*', **kwargs):
+def IndexValuationGet(bk_name=None, bk_id=None, bk_ticker=None, beginTradeDate=None,
+                      endTradeDate=None, tradeDate=None, field='*', **kwargs):
     """板块的估值指标
     
     Parameters:
     --------------------------------------------
     bk_name: str
-     板块名称，如：沪深300、中证500、中证800
+        板块名称，如：沪深300、中证500、中证800
+    bk_id : str
+        板块代码, 如: 000300.SH
+    bk_ticker: str
+        板块代码(无后缀)
     field: str or list of str
         字段名称
     weight_type: int
@@ -129,17 +134,26 @@ def IndexValuationGet(bk_name, beginTradeDate=None, endTradeDate=None, tradeDate
         绩差股标准。
     """
     table_id = 4
+    if bk_name is not None:
+        bk_id = tsl_dict.get_index_id([bk_name])[0]
+    elif bk_id is not None:
+        bk_name = tsl_dict.get_index_name([bk_id])[0]
+    else:
+        bk_id = tsl_dict.get_index_id_by_tickers([bk_ticker])[0]
+        bk_name = tsl_dict.get_index_name([bk_id])[0]
     sysparam = {'CurrentBkName': bk_name}
-    bk_id = ['000300.SH']
+    assert (bk_id is not np.nan) and (bk_name is not np.nan)
     return QuotaGet(table_id, secID=bk_id, beginTradeDate=beginTradeDate,
                     endTradeDate=endTradeDate, tradeDate=tradeDate, field=field,
-                    sysparams=sysparam, **kwargs).reset_index('IDs', drop=True)
+                    sysparams=sysparam, **kwargs)
 
 
-def IndexEodPricesGet(secID=None, beginTradeDate=None, endTradeDate=None,
+def IndexEodPricesGet(secID=None, ticker=None, beginTradeDate=None, endTradeDate=None,
                       tradeDate=None, field='*', cycle='cy_day', **kwargs):
     """指数行情"""
     table_id = 3
+    if ticker is not None:
+        secID = tsl_dict.get_index_id_by_tickers(ticker)
     return QuotaGet(table_id, secID=secID, beginTradeDate=beginTradeDate,
                     endTradeDate=endTradeDate, tradeDate=tradeDate, field=field,
                     cycle=cycle, **kwargs)
