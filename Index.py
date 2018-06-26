@@ -36,7 +36,7 @@ def IndexWeightGet(bk_id, startTradeDate=None, endTradeDate=None,
     Parameters:
     ---------------------------
     bk_id: str
-        板块的代码。如：SH000300, SH000905, SH000906
+        板块的代码。如：000300.SH, 000905.SH, 000906.SH
     """
     if tradeDate is not None:
         tradeDate = [tradeDate]

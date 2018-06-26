@@ -212,4 +212,4 @@ def BaseGet(table_id, secID=None, ticker=None, field='*', baseDate=None, bk=None
     elif bk is not None:
         return CsQuery(field_dict, baseDate, bk, stocks)
     else:
-        CsQuery(field_dict, baseDate)
+        return CsQuery(field_dict, baseDate)
