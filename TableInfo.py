@@ -57,7 +57,13 @@ class TableInfo(object):
 
     def get_index_id(self, index_names):
         a = self.index_nameid.set_index('Name')
+        a = a[~a.index.duplicated(keep='last')]
         return a.reindex(index_names)['ID'].tolist()
+
+    def get_index_id_by_tickers(self, tickers):
+        a = self.index_nameid.copy()
+        a.index = a['ID'].str[:6]
+        return a.reindex(tickers)['ID'].tolist()
 
     def get_index_name(self, index_ids):
         a = self.index_nameid.set_index('ID')
