@@ -197,6 +197,36 @@ def InfoArrayGet(table_id, func_name, secID=None, ticker=None, beginReportDate=N
     return rslt[factor_names].rename(columns=mapping)
 
 
+def InfoArrayGet2(table_id, func_name, secID=None, ticker=None, beginDate=None,
+                  endDate=None, tradeDate=None, field='*', baseDate=None):
+    stocks = _get_secIDs(secID, ticker)
+    if field == '*':
+        factor_ids = tsl_dict.get_table_columns(table_id)
+    else:
+        factor_ids = tsl_dict.get_factor_id_by_names(table_id, field)
+    if tradeDate is None:
+        all_dates = tc.get_trade_days(beginDate, endDate)
+    else:
+        all_dates = [tradeDate]
+    factor_names = tsl_dict.get_factor_name_by_id(factor_ids)
+    factor_eng_names = tsl_dict.get_factor_eng_names_by_id(factor_ids)
+    mapping = {x: y for x, y in zip(factor_names, factor_eng_names)}
+    baseDate = datetime.strptime(baseDate, "%Y%m%d") if baseDate is not None else datetime.today()
+
+    rslt = [None] * len(all_dates)
+    for i, d in enumerate(all_dates):
+        field_dict = {"'data'": '%s(%s)' % (func_name, d)}
+        if stocks is None:
+            data = CsQueryMultiFields(field_dict, baseDate)
+        else:
+            data = CsQueryMultiFields(field_dict, baseDate, "''", stocks, code_transfer=False)
+        data.index = pd.MultiIndex.from_product([[pd.to_datetime(d)], data.index],
+                                                names=['date', 'IDs'])
+        rslt[i] = data
+    rslt = pd.concat(rslt)
+    return rslt[factor_names].rename(columns=mapping)
+
+
 def BaseGet(table_id, secID=None, ticker=None, field='*', baseDate=None, bk=None):
     """对应天软base()函数"""
     stocks = _get_secIDs(secID, ticker)
