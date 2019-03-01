@@ -30,6 +30,15 @@ def IndexConstituentGet(bk_name, startTradeDate=None, endTradeDate=None,
                                     dates=tradeDate)
 
 
+def STConstituentGet(startTradeDate=None, endTradeDate=None, tradeDate=None):
+    """ST成分股提取"""
+    if tradeDate is not None:
+        tradeDate = [tradeDate]
+    return tsl_db.get_st(start_date=startTradeDate,
+                         end_date=endTradeDate,
+                         dates=tradeDate)
+
+
 def IndexWeightGet(bk_id, startTradeDate=None, endTradeDate=None,
                    tradeDate=None):
     """指数成分股权重提取
