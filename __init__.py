@@ -21,8 +21,5 @@ from .EqyFinance import (AShareBalanceSheetGet,
 from .Hgt import (HGT_Hold_Position_Get,
                   HGT_Ten_Active_Stocks_Get,
                   HGT_Trade_Description_Get)
-<<<<<<< HEAD
 from .Info import StockBaseInfoGet
-=======
->>>>>>> 9cd65275757160ad0dc14e542f1d830fd18521f2
 from .TableInfo import tsl_dict
