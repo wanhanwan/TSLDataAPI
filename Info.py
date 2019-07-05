@@ -5,6 +5,16 @@
 from FactorLib.data_source.tsl_data_source import CsQuery, decode_date
 from datetime import datetime
 from .utils import _get_secIDs
+from .BaseAPI import UserCrossSectionFuncGet
+
+def StockListGet(tradeDate=None):
+    """获取某个交易日所有的上市公司代码(ticker)
+    返回一个list
+    """
+    data = UserCrossSectionFuncGet(
+        'getahis3', tradeDate=tradeDate, colname_used='ashare')
+    stocklist = [x.decode('GBK')[2:] for x in data.values]
+    return stocklist
 
 
 def StockBaseInfoGet(secID=None, ticker=None, field=None):

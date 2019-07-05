@@ -1,7 +1,8 @@
 # coding: utf-8
 from FactorLib.utils.tool_funcs import windcode_to_tradecode, windcode_to_tslcode, tradecode_to_tslcode
 from FactorLib.data_source.tsl_data_source import (CsQuery, PanelQuery, PanelQueryByStocks,
-                                                   CsQueryMultiFields)
+                                                   CsQueryMultiFields, run_function)
+from FactorLib.utils.TSDataParser import parse1DArray, parse2DArrayWithIDIndex
 from FactorLib.data_source.base_data_source_h5 import tc
 from datetime import datetime
 import pandas as pd
@@ -243,3 +244,37 @@ def BaseGet(table_id, secID=None, ticker=None, field='*', baseDate=None, bk=None
         return CsQuery(field_dict, baseDate, bk, stocks)
     else:
         return CsQuery(field_dict, baseDate)
+
+
+def UserCrossSectionFuncGet(func_name, beginDate=None, endDate=None, tradeDate=None,
+                            colname_used=None, dimension='1D'):
+    """执行天软客户端中自定义的函数体
+    这个函数体只接受一个时间(Int)参数，返回一个一维数组，
+    一维数组的坐标是股票代码，表示在这个时间点的全市场面数据。
+    """
+    def _getData(func_name, dt, colname_used, dimension):
+        data = run_function(func_name, dt)
+        if dimension == '1D':
+            df = parse1DArray(data, col_name=colname_used)
+        elif dimension == '2D':
+            df = parse2DArrayWithIDIndex(data)
+        else:
+            raise NotImplementedError("dimension must be set '1D' or '2D'.")
+        return df
+
+    if colname_used is None:
+        colname_used = func_name
+
+    if tradeDate is not None:
+        if not isinstance(tradeDate, list):
+            tradeDate = [tradeDate]
+    else:
+        tradeDate = tc.get_trade_days(beginDate, endDate)
+
+    l = [None] * len(tradeDate)
+    for i, dt in enumerate(tradeDate):
+        print("函数执行日期：%s"%dt)
+        l[i] = _getData(func_name, dt, colname_used, dimension=dimension)
+    df = pd.concat(l, keys=pd.to_datetime(tradeDate, format='%Y%m%d'))
+    df.index.names = ['date', 'IDs']
+    return df
