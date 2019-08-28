@@ -251,6 +251,14 @@ def UserCrossSectionFuncGet(func_name, beginDate=None, endDate=None, tradeDate=N
     """执行天软客户端中自定义的函数体
     这个函数体只接受一个时间(Int)参数，返回一个一维数组，
     一维数组的坐标是股票代码，表示在这个时间点的全市场面数据。
+
+    Parameters:
+    ===========
+    colname_used: str
+        设置返回的数据框中的列名
+    dimension: str
+        '1D' or '2D'. 天软运行结束返回的数据格式。'1D'代表一维数组，索引是股票代码；
+        '2D'代表二维数组，索引是股票代码，存在多列数据。
     """
     def _getData(func_name, dt, colname_used, dimension):
         data = run_function(func_name, dt)
