@@ -1,4 +1,5 @@
 from .Dividend import EqyDivGet
+from .BaseAPI import UserCrossSectionFuncGet
 from .Quota import (AshareEodDerivativeGet,
                     AShareMinutelyPricesGet,
                     AShareSecondlyPricesGet,
@@ -10,6 +11,7 @@ from .Fund import (FundNavGet,
                    FundEqyInfoGet,
                    FundDailyPricesGet)
 from .Index import (IndexConstituentGet,
+                    STConstituentGet,
                     IndexWeightGet,
                     IndexFinancialDerivativeGet,
                     IndexEodPricesGet,
