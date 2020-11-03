@@ -1,14 +1,22 @@
 # coding: utf-8
 
 """基金数据库"""
-from .BaseAPI import InfoArrayGet, QuotaGet, BaseGet
+from FactorLib.utils.datetime_func import IntDate2Datetime
+
 from .utils import get_tsl_fundid
+from .BaseAPI import InfoArrayGet, QuotaGet, BaseGet, PanelQuery, UserTimeSeriesFuncGet
 
 
 def FundEqyInfoGet(secID=None, ticker=None, beginReportDate=None, endReportDate=None, reportDate=None,
                    field='*', baseDate=None):
     """
     基金持仓明细
+    
+    基金股票持仓明细
+    
+    Return:DataFrame
+        截至日、代码、占净值比、市值排名、数量(股)、市值(元)
+        
     """
     func_name = 'FundHoldInfoGet'
     table_id = 318
@@ -21,13 +29,44 @@ def FundEqyInfoGet(secID=None, ticker=None, beginReportDate=None, endReportDate=
     return raw.reset_index()
 
 
-def FundNavGet(secID=None, ticker=None, beginTradeDate=None, endTradeDate=None, tradeDate=None,
-               field='*'):
-    """基金净值
+def FundNavGet(secID=None, ticker=None, beginTradeDate=None, endTradeDate=None, tradeDate=None, field='*'):
     """
-    table_id = 1
-    cycle = 'cy_day'
-    return QuotaGet(table_id, secID, ticker, beginTradeDate, endTradeDate, tradeDate, field, cycle)
+    基金净值
+
+    Returns:
+    --------
+    DataFrame([unit_nav, cum_nav, nav_pctchg, date])
+    """
+    try:
+        ticker = get_tsl_fundid(secID, ticker)
+    except:
+        ticker = None
+    field_dict = {"'unit_nav'": "FundNAWDW()",
+                  "'cum_nav'": "FundNAWLJ()",
+                  "'nav_pctchg'": "FundNAWZf3()",
+                  "'date'": "DateTimeToStr(sp_time())"
+    }
+    data = PanelQuery(field_dict, start_date=beginTradeDate, end_date=endTradeDate, dates=tradeDate,
+                      stock_list=ticker, bk_name="''")
+    if field != '*':
+        return data[field]
+    return data
+
+
+def FundDailyPricesGet(secID=None, ticker=None, beginTradeDate=None, endTradeDate=None, tradeDate=None, field='*'):
+    """
+    场内基金日行情
+
+    """
+    if tradeDate:
+        beginTradeDate = endTradeDate = tradeDate
+    prices = UserTimeSeriesFuncGet('FundDailyPricesGet', secID, ticker, beginTradeDate, endTradeDate)
+    prices['IDs'] = prices['IDs'].apply(lambda x: x.decode('GBK')[2:])
+    prices['date'] = prices['date'].apply(IntDate2Datetime)
+    prices = prices.set_index(['date', 'IDs']).sort_index()
+    if field != '*':
+        prices = prices[field]
+    return prices
 
 
 def FundBasicInfoGet(secID=None, ticker=None, field='*'):

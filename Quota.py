@@ -12,9 +12,13 @@ def AShareEodDailyPricesGet(secID=None, ticker=None, beginTradeDate=None, endTra
     Parameters:
     ----------------------------------------------
     brate: int
-        是否复权
+        是否复权, 0：不复权；1：比例复权；2：复杂复权
     """
-    return QuotaGet(0, secID, ticker, beginTradeDate, endTradeDate, tradeDate, field, rate=brate)
+    if brate != 0:
+        params = {'RateDay': -1}
+    else:
+        params = None
+    return QuotaGet(0, secID, ticker, beginTradeDate, endTradeDate, tradeDate, field, rate=brate, sysparams=params)
 
 
 def AShareMinutelyPricesGet(secID=None, ticker=None, beginTradeDate=None, endTradeDate=None,

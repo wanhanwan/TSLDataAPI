@@ -1,6 +1,7 @@
 # coding: utf-8
-from pathlib import Path
 import pandas as pd
+from pathlib import Path
+from FactorLib.utils.tool_funcs import windcode_to_tslcode, tradecode_to_tslcode
 
 
 def read_tableinfo():
@@ -46,8 +47,24 @@ def to_pandas_freq(freq_str):
 
 def get_tsl_fundid(secID, ticker):
     if secID is not None:
-        return ['OF%s' % x[:-2] for x in secID]
+        return ['OF%s' % x[:6] for x in secID]
     return ['OF' + x for x in ticker]
+
+
+def _get_secIDs(secID, ticker):
+    if secID is not None:
+        if isinstance(secID, str):
+            stocks = [windcode_to_tslcode(secID)]
+        else:
+            stocks = [windcode_to_tslcode(x) for x in secID]
+    elif ticker is not None:
+        if isinstance(ticker, str):
+            stocks = [tradecode_to_tslcode(ticker)]
+        else:
+            stocks = [tradecode_to_tslcode(x) for x in ticker]
+    else:
+        stocks = None
+    return stocks
 
 
 if __name__ == '__main__':

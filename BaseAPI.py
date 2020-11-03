@@ -1,7 +1,8 @@
 # coding: utf-8
 from FactorLib.utils.tool_funcs import windcode_to_tradecode, windcode_to_tslcode, tradecode_to_tslcode
-from FactorLib.data_source.tsl_data_source import (CsQuery, PanelQuery, PanelQueryByStocks,
-                                                   CsQueryMultiFields)
+from FactorLib.data_source.tsl_data_source import (CsQuery, PanelQuery, PanelQueryByStocks, run_script,
+                                                   CsQueryMultiFields, parse2DArray, run_function)
+from FactorLib.utils.TSDataParser import parse1DArray, parse2DArrayWithIDIndex                                                   
 from FactorLib.data_source.base_data_source_h5 import tc
 from datetime import datetime
 import pandas as pd
@@ -166,10 +167,74 @@ def QuotaGet(table_id, secID=None, ticker=None, beginTradeDate=None, endTradeDat
     return rslt
 
 
+def InfoArray(table_id, secID=None, ticker=None, pandas_query_str=None, field='*'):
+    """
+    远程调用infoarray函数
+    
+    Parameters:
+    ------------
+    table_id: int
+        数据表ID，可在天软客户端编辑器中按F11查询
+    secID:str or list of str
+        证券代码(带后缀)
+    ticker: str or list of str
+        证券代码(无后缀)
+    pandas_query_str: str
+        使用pandas.DataFrame.query函数，对返回数据进行查询。
+    field: str
+         返回字段
+    
+    Return: DataFrame
+    --------------
+    Note：日期的格式是INT64
+    """
+    stocks = _get_secIDs(secID, ticker)
+    function_str = "return infoarray(%d);" % table_id
+    factor_ids = tsl_dict.get_table_columns(table_id)
+    names_dict = {x: y for x, y in zip(
+        tsl_dict.get_factor_name_by_id(factor_ids),
+        tsl_dict.get_factor_eng_names_by_id(factor_ids)
+        )
+    }
+    
+    df = []
+    for stock_code in stocks:
+        data = run_script(function_str, {'StockID': stock_code})
+        data = parse2DArray(data, encoding='GBK')
+        df.append(data)
+    df = pd.concat(df).rename(columns=names_dict)
+    if pandas_query_str:
+        df = df.query(pandas_query_str)
+    if field == '*':
+        return df
+    return df[[field]]
+
+
+
 def InfoArrayGet(table_id, func_name, secID=None, ticker=None, beginReportDate=None,
                  endReportDate=None, reportDate=None, field='*', baseDate=None):
     """
     数据表信息提取。适用于单季度多条数据，对应天软infoarray()函数
+    
+    Parameters:
+    -----------
+    table_id: int
+        数据表ID，可在天软客户端编辑器中按F11查询
+    func_name: str
+        远程调用客户端函数名称，事先在天软客户端编写好待调用的函数。函数
+        的输入是一个日期，返回一张数据表。
+    secID: str or list of str
+        证券代码(带后缀)
+    ticker: str or list of str
+        证券代码(无后缀)
+    beginReportDate: str
+        起始报告期
+    endReportDate: str
+        终止报告期
+    reportDate: str
+        单一报告期
+    field: str or list of str
+        返回字段
     """
     stocks = _get_secIDs(secID, ticker)
     if field == '*':
@@ -197,6 +262,39 @@ def InfoArrayGet(table_id, func_name, secID=None, ticker=None, beginReportDate=N
     return rslt[factor_names].rename(columns=mapping)
 
 
+def InfoArrayGet2(table_id, func_name, secID=None, ticker=None, beginDate=None,
+                  endDate=None, tradeDate=None, field='*', baseDate=None):
+    """
+    与InfoArrayGet的区别是此函数的日期是交易日。
+    """
+    stocks = _get_secIDs(secID, ticker)
+    if field == '*':
+        factor_ids = tsl_dict.get_table_columns(table_id)
+    else:
+        factor_ids = tsl_dict.get_factor_id_by_names(table_id, field)
+    if tradeDate is None:
+        all_dates = tc.get_trade_days(beginDate, endDate)
+    else:
+        all_dates = [tradeDate]
+    factor_names = tsl_dict.get_factor_name_by_id(factor_ids)
+    factor_eng_names = tsl_dict.get_factor_eng_names_by_id(factor_ids)
+    mapping = {x: y for x, y in zip(factor_names, factor_eng_names)}
+    baseDate = datetime.strptime(baseDate, "%Y%m%d") if baseDate is not None else datetime.today()
+
+    rslt = [None] * len(all_dates)
+    for i, d in enumerate(all_dates):
+        field_dict = {"'data'": '%s(%s)' % (func_name, d)}
+        if stocks is None:
+            data = CsQueryMultiFields(field_dict, baseDate)
+        else:
+            data = CsQueryMultiFields(field_dict, baseDate, "''", stocks, code_transfer=False)
+        data.index = pd.MultiIndex.from_product([[pd.to_datetime(d)], data.index],
+                                                names=['date', 'IDs'])
+        rslt[i] = data
+    rslt = pd.concat(rslt)
+    return rslt[factor_names].rename(columns=mapping)
+
+
 def BaseGet(table_id, secID=None, ticker=None, field='*', baseDate=None, bk=None):
     """对应天软base()函数"""
     stocks = _get_secIDs(secID, ticker)
@@ -213,3 +311,72 @@ def BaseGet(table_id, secID=None, ticker=None, field='*', baseDate=None, bk=None
         return CsQuery(field_dict, baseDate, bk, stocks)
     else:
         return CsQuery(field_dict, baseDate)
+
+
+def UserCrossSectionFuncGet(func_name, beginDate=None, endDate=None, tradeDate=None,
+                            colname_used=None, dimension='1D'):
+    """执行天软客户端中自定义的函数体
+    这个函数体只接受一个时间(YYYYMMDD)参数，返回一个一维数组，
+    一维数组的坐标是股票代码，表示在这个时间点的全市场横截面数据。
+
+    当返回数据是1维时，DataFrame的列名是执行的函数名，colname_used可以将此更改为任意名称。
+    """
+    def _getData(func_name, dt, colname_used, dimension):
+        data = run_function(func_name, dt)
+        if dimension == '1D':
+            df = parse1DArray(data, col_name=colname_used)
+        elif dimension == '2D':
+            df = parse2DArrayWithIDIndex(data)
+        else:
+            raise NotImplementedError("dimension must be set '1D' or '2D'.")
+        return df
+
+    if colname_used is None:
+        colname_used = func_name
+
+    if tradeDate is not None:
+        if not isinstance(tradeDate, list):
+            tradeDate = [tradeDate]
+    else:
+        tradeDate = tc.get_trade_days(beginDate, endDate)
+
+    l = [None] * len(tradeDate)
+    for i, dt in enumerate(tradeDate):
+        print("函数执行日期：%s"%dt)
+        l[i] = _getData(func_name, dt, colname_used, dimension=dimension)
+    df = pd.concat(l, keys=pd.to_datetime(tradeDate, format='%Y%m%d'))
+    df.index.names = ['date', 'IDs']
+    return df
+
+
+def UserTimeSeriesFuncGet(func_name, secID=None, ticker=None, beginDate=None, endDate=None):
+    """
+    执行天软客户端自定义函数体  
+    这个函数体接受一个代码、起始日期、终止日期  
+    函数返回一个数组
+
+    Parameters:
+    -----------
+    func_name: str
+        函数名称
+    secID: str or list
+        资产代码
+    ticker: str or list
+        没有后缀的代码
+    beginDate: str or datetime-like
+        起始日期
+    endDate: str or datetime-like
+        终止日期
+    """
+    stocks = _get_secIDs(secID, ticker)
+    beginDate = pd.Timestamp(beginDate).strftime("%Y%m%d")
+    endDate = pd.Timestamp(endDate).strftime("%Y%m%d")
+    l = []
+    for code in stocks:
+        print("函数执行代码：%s" % code)
+        data = run_function(func_name, f"'{code}'", beginDate, endDate)
+        data = parse2DArray(data)
+        l.append(data)
+    df = pd.concat(l)
+    return df
+
